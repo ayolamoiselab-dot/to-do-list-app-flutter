@@ -1,18 +1,32 @@
 // lib/main.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:todo_list_app/views/onboarding/onboarding_screen.dart';
 import 'package:todo_list_app/views/login/login_screen.dart';
 import 'package:todo_list_app/views/signup/signup_screen.dart';
-//import 'package:todo_list_app/views/todo_list_screen.dart'; // À créer plus tard
+import 'package:todo_list_app/views/home_screen.dart';
+import 'package:todo_list_app/views/add_task_screen.dart';
+import 'package:todo_list_app/views/edit_task_screen.dart';
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  // Vérifier si l'onboarding a été vu
+  bool isOnboardingSeen = false;
+  try {
+    final prefs = await SharedPreferences.getInstance();
+    isOnboardingSeen = prefs.getBool('isSeen') ?? false;
+  } catch (e) {
+    print("Erreur lors de la vérification de l'onboarding : $e");
+  }
+
+  runApp(MyApp(initialRoute: isOnboardingSeen ? LoginScreen.route : OnboardingScreen.route));
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final String initialRoute;
+
+  const MyApp({super.key, required this.initialRoute});
 
   @override
   Widget build(BuildContext context) {
@@ -27,26 +41,17 @@ class MyApp extends StatelessWidget {
             primarySwatch: Colors.green,
           ),
           debugShowCheckedModeBanner: false,
-          initialRoute: OnboardingScreen.route,
+          initialRoute: initialRoute,
           routes: {
             OnboardingScreen.route: (context) => const OnboardingScreen(),
             LoginScreen.route: (context) => const LoginScreen(),
             SignUpScreen.route: (context) => const SignUpScreen(),
-            '/todo_list': (context) => const TodoListScreen(),
+            HomeScreen.route: (context) => const HomeScreen(),
+            AddTaskScreen.route: (context) => const AddTaskScreen(),
+            EditTaskScreen.route: (context) => EditTaskScreen(),
           },
         );
       },
-    );
-  }
-}
-
-class TodoListScreen extends StatelessWidget {
-  const TodoListScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(child: Text("Todo List Screen")),
     );
   }
 }

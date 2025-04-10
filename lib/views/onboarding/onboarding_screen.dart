@@ -21,15 +21,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<Map<String, dynamic>> contents = [
     {
       'title': "TO-DO LIST",
-      'subtitle':
-          "Bienvenue dans votre To-Do List !\nOrganisez vos tâches facilement.",
+      'subtitle': "Bienvenue dans votre To-Do List !\nOrganisez vos tâches facilement.",
       'image': "images/slide1.webp",
       'color': const Color.fromARGB(255, 83, 177, 221), // Bleu clair
     },
     {
       'title': "TO-DO LIST",
-      'subtitle':
-          "Ajoutez, modifiez et supprimez\nvos tâches en un clin d'œil.",
+      'subtitle': "Ajoutez, modifiez et supprimez\nvos tâches en un clin d'œil.",
       'image': "images/slide4.png",
       'color': const Color(0xFFE1BEE7), // Violet clair
     },
@@ -69,41 +67,31 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      // Image avec animation
                       Animate(
                         delay: Duration(milliseconds: index == 0 ? 0 : 500),
-                        effects:
-                            index == 0
-                                ? const [
-                                  FadeEffect(
+                        effects: index == 0
+                            ? const [
+                                FadeEffect(
                                     delay: Duration(milliseconds: 300),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                  ScaleEffect(
+                                    duration: Duration(milliseconds: 800)),
+                                ScaleEffect(
                                     delay: Duration(milliseconds: 300),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                  SlideEffect(
+                                    duration: Duration(milliseconds: 800)),
+                                SlideEffect(
                                     begin: Offset(0, 0.2),
                                     end: Offset.zero,
                                     delay: Duration(milliseconds: 300),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                  RotateEffect(
+                                    duration: Duration(milliseconds: 800)),
+                                RotateEffect(
                                     begin: 0.1,
                                     end: 0,
                                     delay: Duration(milliseconds: 300),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                ]
-                                : const [
-                                  FadeEffect(
-                                    duration: Duration(milliseconds: 600),
-                                  ),
-                                  ScaleEffect(
-                                    duration: Duration(milliseconds: 600),
-                                  ),
-                                ],
+                                    duration: Duration(milliseconds: 800)),
+                              ]
+                            : const [
+                                FadeEffect(duration: Duration(milliseconds: 600)),
+                                ScaleEffect(duration: Duration(milliseconds: 600)),
+                              ],
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(20),
                           child: Image.asset(
@@ -111,35 +99,28 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                             height: size.height * 0.35,
                             width: size.height * 0.35,
                             fit: BoxFit.contain,
-                            errorBuilder:
-                                (context, error, stackTrace) =>
-                                    Container(color: Colors.grey),
+                            errorBuilder: (context, error, stackTrace) =>
+                                Container(color: Colors.grey),
                           ),
                         ),
                       ),
                       SizedBox(height: 40),
-                      // Titre avec animation
                       Animate(
                         delay: Duration(milliseconds: index == 0 ? 800 : 600),
-                        effects:
-                            index == 0
-                                ? const [
-                                  FadeEffect(
+                        effects: index == 0
+                            ? const [
+                                FadeEffect(
                                     delay: Duration(milliseconds: 200),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                  SlideEffect(
+                                    duration: Duration(milliseconds: 800)),
+                                SlideEffect(
                                     begin: Offset(0, 0.2),
                                     end: Offset.zero,
                                     delay: Duration(milliseconds: 200),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                ]
-                                : const [
-                                  FadeEffect(
-                                    duration: Duration(milliseconds: 600),
-                                  ),
-                                ],
+                                    duration: Duration(milliseconds: 800)),
+                              ]
+                            : const [
+                                FadeEffect(duration: Duration(milliseconds: 600)),
+                              ],
                         child: Text(
                           contents[index]['title'],
                           style: TextStyle(
@@ -151,28 +132,22 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                         ),
                       ),
                       SizedBox(height: 20),
-                      // Sous-titre avec animation de texte
                       Animate(
                         delay: Duration(milliseconds: index == 0 ? 1200 : 800),
-                        effects:
-                            index == 0
-                                ? const [
-                                  FadeEffect(
+                        effects: index == 0
+                            ? const [
+                                FadeEffect(
                                     delay: Duration(milliseconds: 200),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                  SlideEffect(
+                                    duration: Duration(milliseconds: 800)),
+                                SlideEffect(
                                     begin: Offset(0, 0.2),
                                     end: Offset.zero,
                                     delay: Duration(milliseconds: 200),
-                                    duration: Duration(milliseconds: 800),
-                                  ),
-                                ]
-                                : const [
-                                  FadeEffect(
-                                    duration: Duration(milliseconds: 600),
-                                  ),
-                                ],
+                                    duration: Duration(milliseconds: 800)),
+                              ]
+                            : const [
+                                FadeEffect(duration: Duration(milliseconds: 600)),
+                              ],
                         child: AnimatedTextKit(
                           animatedTexts: [
                             TyperAnimatedText(
@@ -193,7 +168,6 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
               );
             },
           ),
-          // Indicateurs (dots)
           Positioned(
             bottom: size.height * 0.15,
             left: 0,
@@ -212,14 +186,11 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(5),
                     ),
-                  ).animate().scale(
-                    duration: const Duration(milliseconds: 300),
-                  ),
+                  ).animate().scale(duration: const Duration(milliseconds: 300)),
                 ),
               ),
             ),
           ),
-          // Bouton "Suivant" / "Commencer"
           Positioned(
             bottom: 50,
             right: 30,
@@ -257,13 +228,9 @@ class _NextButton extends StatelessWidget {
             final prefs = await SharedPreferences.getInstance();
             await prefs.setBool('isSeen', true);
           } catch (e) {
-            print("Erreur lors de l'utilisation de SharedPreferences : $e");
-            // Continuer malgré l'erreur
+            print("Erreur lors de l'enregistrement de l'onboarding : $e");
           }
-          Navigator.pushReplacementNamed(
-            context,
-            LoginScreen.route,
-          ); // Rediriger vers LoginScreen
+          Navigator.pushReplacementNamed(context, LoginScreen.route);
         } else {
           controller.nextPage(
             duration: const Duration(milliseconds: 500),

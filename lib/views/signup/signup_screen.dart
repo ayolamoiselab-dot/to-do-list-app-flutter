@@ -1,4 +1,4 @@
-// lib/views/signup/signup_screen.dart
+// lib/screens/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:todo_list_app/views/login/login_screen.dart';
@@ -101,14 +101,21 @@ class _SignUpFormState extends State<SignUpForm> {
   bool _isLoading = false;
 
   // Simuler une requête API pour l'inscription
-  Future<bool> _registerUser(String email, String password) async {
+  Future<Map<String, dynamic>> _registerUser(String email, String password) async {
     // TODO: Remplacer par une vraie requête API (POST /signup)
-    // Exemple de requête API simulée
+    // Exemple d'URL : Uri.parse('https://api.todoapp.com/signup')
+    // Attendu : { "success": true, "userId": "123" } ou { "success": false, "message": "Erreur" }
     await Future.delayed(const Duration(seconds: 2)); // Simuler un délai réseau
     if (email != "" && password != "") {
-      return true; // Inscription réussie
+      return {
+        "success": true,
+        "userId": "123", // Simuler un ID utilisateur
+      };
     }
-    return false; // Inscription échouée
+    return {
+      "success": false,
+      "message": "Erreur lors de l'inscription",
+    };
   }
 
   void _submit() async {
@@ -123,16 +130,15 @@ class _SignUpFormState extends State<SignUpForm> {
       setState(() {
         _isLoading = true;
       });
-      bool success = await _registerUser(email!, password!);
+      final response = await _registerUser(email!, password!);
       setState(() {
         _isLoading = false;
       });
-      if (success) {
-        // Rediriger vers l'écran de connexion après une inscription réussie
+      if (response['success'] == true) {
         Navigator.pushReplacementNamed(context, LoginScreen.route);
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Erreur lors de l'inscription")),
+          SnackBar(content: Text(response['message'])),
         );
       }
     }
@@ -258,5 +264,3 @@ class _SignUpFormState extends State<SignUpForm> {
     );
   }
 }
-
-// Les constantes (authOutlineInputBorder, SocalCard, mailIcon, lockIcon, googleIcon, facebookIcon, twitterIcon) sont déjà définies dans login_screen.dart
