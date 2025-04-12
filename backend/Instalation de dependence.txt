@@ -1,0 +1,5 @@
+Installation de dépendance 
+npm i
+
+run node.js
+node server.js

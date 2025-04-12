@@ -28,7 +28,7 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
     {
       'title': "TO-DO LIST",
       'subtitle': "Ajoutez, modifiez et supprimez\nvos tâches en un clin d'œil.",
-      'image': "images/slide4.png",
+      'image': "images/slide4.webp",
       'color': const Color(0xFFE1BEE7), // Violet clair
     },
     {

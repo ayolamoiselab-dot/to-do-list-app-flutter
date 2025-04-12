@@ -1,5 +1,7 @@
 // lib/screens/edit_task_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 
 class EditTaskScreen extends StatefulWidget {
   static const String route = '/edit_task';
@@ -18,26 +20,67 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
   String? status;
   bool _isLoading = false;
 
+  // Correspondance entre les anciennes valeurs et les nouvelles
+  final Map<String, String> statusMapping = {
+    'À faire': 'a faire',
+    'En cours': 'en cours',
+    'Terminé': 'termine',
+    'a faire': 'a faire',
+    'en cours': 'en cours',
+    'termine': 'termine',
+  };
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final task = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-    title = task['title'];
-    description = task['description'];
-    dueDate = task['dueDate'];
-    status = task['status'];
+    // S'assurer que didChangeDependencies n'écrase pas les valeurs si elles ont déjà été initialisées
+    if (title == null && description == null && dueDate == null && status == null) {
+      final task = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+      title = task['title'];
+      description = task['description'];
+      dueDate = task['dueDate'];
+      status = statusMapping[task['status']] ?? 'a faire';
+      print('Valeur initiale du statut dans didChangeDependencies : ${task['status']}');
+      print('Valeur mappée du statut : $status');
+    }
   }
 
-  // Simuler une requête API pour modifier une tâche
+  // Requête API pour modifier une tâche
   Future<Map<String, dynamic>> _updateTask(String taskId, Map<String, dynamic> task) async {
-    // TODO: Remplacer par une vraie requête API (PUT /tasks/$taskId)
-    // Exemple d'URL : Uri.parse('https://api.todoapp.com/tasks/$taskId')
-    // Body : { "title": task['title'], "description": task['description'], "status": task['status'], "dueDate": task['dueDate'] }
-    // Attendu : { "success": true } ou { "success": false, "message": "Erreur" }
-    await Future.delayed(const Duration(seconds: 1)); // Simuler un délai réseau
-    return {
-      "success": true,
-    };
+    final String apiUrl = 'http://localhost:5000/api/todos/$taskId'; // PUT /api/todos/:id
+
+    try {
+      final response = await http.put(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': task['title'],
+          'tasks': task['description'],
+          'status': task['status'],
+        }),
+      );
+
+      print('Réponse de l\'API (statut HTTP) : ${response.statusCode}');
+      print('Corps de la réponse : ${response.body}');
+
+      if (response.statusCode == 200) {
+        return {
+          'success': true,
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Erreur lors de la modification de la tâche',
+        };
+      }
+    } catch (e) {
+      print('Erreur réseau dans _updateTask : $e');
+      return {
+        'success': false,
+        'message': 'Erreur réseau : $e',
+      };
+    }
   }
 
   void _submit() async {
@@ -53,13 +96,16 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
         "status": status!,
         "dueDate": dueDate!,
       };
+      print('Données envoyées à l\'API : $updatedTask');
       final response = await _updateTask(task['id'], updatedTask);
       setState(() {
         _isLoading = false;
       });
       if (response['success'] == true) {
+        print('Mise à jour réussie, retour à l\'écran précédent.');
         Navigator.pop(context);
       } else {
+        print('Échec de la mise à jour : ${response['message']}');
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(response['message'])),
         );
@@ -130,9 +176,14 @@ class _EditTaskScreenState extends State<EditTaskScreen> {
                 onChanged: (value) {
                   setState(() {
                     status = value!;
+                    print('Statut sélectionné dans le dropdown : $status');
                   });
                 },
-                items: ["To Do", "In Progress", "Done"]
+                onSaved: (value) {
+                  status = value; // Sauvegarder la valeur lors de _formKey.currentState!.save()
+                  print('Statut sauvegardé via onSaved : $status');
+                },
+                items: ["a faire", "en cours", "termine"]
                     .map((status) => DropdownMenuItem(
                           value: status,
                           child: Text(status),

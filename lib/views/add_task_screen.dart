@@ -1,5 +1,8 @@
 // lib/screens/add_task_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Ajoute cette importation
 
 class AddTaskScreen extends StatefulWidget {
   static const String route = '/add_task';
@@ -15,20 +18,66 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   String? title;
   String? description;
   String? dueDate;
-  String status = "To Do";
+  String status = "a faire";
   bool _isLoading = false;
+  String? userId; // Variable pour stocker userId
 
-  // Simuler une requête API pour ajouter une tâche
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId(); // Charger userId au démarrage
+  }
+
+  // Charger userId depuis SharedPreferences
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    final storedUserId = prefs.getString('userId');
+    final passedUserId = ModalRoute.of(context)!.settings.arguments as String?;
+    setState(() {
+      userId = storedUserId ?? passedUserId; // Utiliser SharedPreferences en priorité, sinon les arguments
+    });
+    if (userId == null) {
+      // Si userId n'est pas trouvé, rediriger vers LoginScreen
+      Navigator.pushReplacementNamed(context, '/login');
+    }
+  }
+
+  // Requête API pour ajouter une tâche
   Future<Map<String, dynamic>> _addTask(String userId, Map<String, dynamic> task) async {
-    // TODO: Remplacer par une vraie requête API (POST /tasks)
-    // Exemple d'URL : Uri.parse('https://api.todoapp.com/tasks')
-    // Body : { "userId": userId, "title": task['title'], "description": task['description'], "status": task['status'], "dueDate": task['dueDate'] }
-    // Attendu : { "success": true, "taskId": "123" } ou { "success": false, "message": "Erreur" }
-    await Future.delayed(const Duration(seconds: 1)); // Simuler un délai réseau
-    return {
-      "success": true,
-      "taskId": "123",
-    };
+    const String apiUrl = 'http://localhost:5000/api/todos'; // POST /api/todos
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'title': task['title'],
+          'tasks': task['description'], // "description" dans le front correspond à "tasks" dans le backend
+          'status': task['status'],
+          'user_id': int.parse(userId), // Convertir userId en entier
+          'group_name': 'default', // Valeur par défaut
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'taskId': data['insertId'].toString(),
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Erreur lors de l\'ajout de la tâche',
+        };
+      }
+    } catch (e) {
+      return {
+        'success': false,
+        'message': 'Erreur réseau : $e',
+      };
+    }
   }
 
   void _submit() async {
@@ -37,7 +86,6 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
       setState(() {
         _isLoading = true;
       });
-      final userId = ModalRoute.of(context)!.settings.arguments as String?;
       if (userId != null) {
         final task = {
           "title": title!,
@@ -46,7 +94,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
           "dueDate": dueDate!,
           "createdAt": DateTime.now().toIso8601String(),
         };
-        final response = await _addTask(userId, task);
+        final response = await _addTask(userId!, task);
         setState(() {
           _isLoading = false;
         });
@@ -57,6 +105,13 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
             SnackBar(content: Text(response['message'])),
           );
         }
+      } else {
+        setState(() {
+          _isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Erreur : ID utilisateur non trouvé')),
+        );
       }
     }
   }
@@ -79,7 +134,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add Task"),
+        title: const Text("Ajouter une tache"),
         backgroundColor: Colors.green,
       ),
       body: Padding(
@@ -97,7 +152,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                   return null;
                 },
                 decoration: const InputDecoration(
-                  labelText: "Title",
+                  labelText: "Titre",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -124,14 +179,14 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                     status = value!;
                   });
                 },
-                items: ["To Do", "In Progress", "Done"]
+                items: ["a faire", "en cours", "termine"]
                     .map((status) => DropdownMenuItem(
                           value: status,
                           child: Text(status),
                         ))
                     .toList(),
                 decoration: const InputDecoration(
-                  labelText: "Status",
+                  labelText: "Statut",
                   border: OutlineInputBorder(),
                 ),
               ),
@@ -140,9 +195,9 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                 readOnly: true,
                 onTap: () => _selectDate(context),
                 decoration: InputDecoration(
-                  labelText: "Due Date",
+                  labelText: "Date échéance",
                   border: const OutlineInputBorder(),
-                  hintText: dueDate ?? "Select a date",
+                  hintText: dueDate ?? "Selectionner une date",
                 ),
                 validator: (value) {
                   if (dueDate == null) {
@@ -164,7 +219,7 @@ class _AddTaskScreenState extends State<AddTaskScreen> {
                           borderRadius: BorderRadius.all(Radius.circular(16)),
                         ),
                       ),
-                      child: const Text("Add Task"),
+                      child: const Text("Ajouter"),
                     ),
             ],
           ),

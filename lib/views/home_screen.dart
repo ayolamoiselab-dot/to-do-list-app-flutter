@@ -1,5 +1,8 @@
 // lib/screens/home_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Ajoute cette importation
 import 'package:todo_list_app/views/add_task_screen.dart';
 import 'package:todo_list_app/views/edit_task_screen.dart';
 import 'package:todo_list_app/views/login/login_screen.dart';
@@ -15,56 +18,90 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   List<Map<String, dynamic>> tasks = [];
+  String? userId; // Variable pour stocker userId
 
   @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Récupérer l'ID utilisateur passé depuis LoginScreen
-    final userId = ModalRoute.of(context)!.settings.arguments as String?;
+  void initState() {
+    super.initState();
+    _loadUserId(); // Charger userId au démarrage
+  }
+
+  // Charger userId depuis SharedPreferences
+  Future<void> _loadUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      userId = prefs.getString('userId');
+    });
     if (userId != null) {
-      _fetchTasks(userId);
+      _fetchTasks(userId!);
+    } else {
+      // Si userId n'est pas trouvé, rediriger vers LoginScreen
+      Navigator.pushReplacementNamed(context, LoginScreen.route);
     }
   }
 
-  // Simuler une requête API pour récupérer les tâches de l'utilisateur
+  // Requête API pour récupérer les tâches de l'utilisateur
   Future<void> _fetchTasks(String userId) async {
-    // TODO: Remplacer par une vraie requête API (GET /tasks?userId=$userId)
-    // Exemple d'URL : Uri.parse('https://api.todoapp.com/tasks?userId=$userId')
-    // Attendu : Liste de tâches [{ "id": "1", "title": "Tâche 1", "description": "...", "status": "To Do", ... }]
-    await Future.delayed(const Duration(seconds: 1)); // Simuler un délai réseau
-    setState(() {
-      tasks = [
-        {
-          "id": "1",
-          "userId": userId,
-          "title": "Acheter des provisions",
-          "description": "Lait, pain, œufs",
-          "status": "To Do",
-          "dueDate": "2025-04-15",
-          "createdAt": "2025-04-09",
-        },
-        {
-          "id": "2",
-          "userId": userId,
-          "title": "Réunion d'équipe",
-          "description": "Préparer la présentation",
-          "status": "Done",
-          "dueDate": "2025-04-10",
-          "createdAt": "2025-04-08",
-        },
-      ];
-    });
+    const String baseUrl = 'http://localhost:5000/api/users';
+    final String apiUrl = '$baseUrl/$userId/todos'; // GET /api/users/:id/todos
+
+    try {
+      final response = await http.get(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        final List<dynamic> data = jsonDecode(response.body);
+        setState(() {
+          tasks = data.map((task) {
+            return {
+              "id": task['id'].toString(), // Convertir en String pour cohérence
+              "userId": task['user_id'].toString(),
+              "title": task['title'],
+              "description": task['tasks'], // Le champ "tasks" correspond à "description" dans ton front
+              "status": task['status'],
+              "dueDate": task['updated_at'].toString().split('T')[0], // Extraire la date sans l'heure
+              "createdAt": task['created_at'].toString().split('T')[0],
+            };
+          }).toList();
+        });
+      } else {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Erreur lors de la récupération des tâches')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur réseau : $e')),
+      );
+    }
   }
 
-  // Simuler la suppression d'une tâche
+  // Requête API pour supprimer une tâche
   Future<void> _deleteTask(String taskId) async {
-    // TODO: Remplacer par une vraie requête API (DELETE /tasks/$taskId)
-    // Exemple d'URL : Uri.parse('https://api.todoapp.com/tasks/$taskId')
-    // Attendu : { "success": true } ou { "success": false, "message": "Erreur" }
-    await Future.delayed(const Duration(seconds: 1)); // Simuler un délai réseau
-    setState(() {
-      tasks.removeWhere((task) => task['id'] == taskId);
-    });
+    const String baseUrl = 'http://localhost:5000/api/todos';
+    final String apiUrl = '$baseUrl/$taskId'; // DELETE /api/todos/:id
+
+    try {
+      final response = await http.delete(Uri.parse(apiUrl));
+
+      if (response.statusCode == 200) {
+        setState(() {
+          tasks.removeWhere((task) => task['id'] == taskId);
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Tâche supprimée avec succès')),
+        );
+      } else {
+        final data = jsonDecode(response.body);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(data['error'] ?? 'Erreur lors de la suppression de la tâche')),
+        );
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Erreur réseau : $e')),
+      );
+    }
   }
 
   @override
@@ -76,106 +113,117 @@ class _HomeScreenState extends State<HomeScreen> {
         actions: [
           IconButton(
             icon: const Icon(Icons.logout),
-            onPressed: () {
-              // TODO: Implémenter la déconnexion (supprimer le token, etc.)
+            onPressed: () async {
+              // Supprimer userId de SharedPreferences lors de la déconnexion
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.remove('userId');
               Navigator.pushReplacementNamed(context, LoginScreen.route);
             },
           ),
         ],
       ),
-      body: tasks.isEmpty
-          ? const Center(child: CircularProgressIndicator())
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: tasks.length,
-              itemBuilder: (context, index) {
-                final task = tasks[index];
-                return Card(
-                  elevation: 3,
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  child: ListTile(
-                    title: Text(
-                      task['title'],
-                      style: const TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(task['description']),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Status: ${task['status']}",
-                          style: TextStyle(
-                            color: task['status'] == "Done"
-                                ? Colors.green
-                                : Colors.red,
-                          ),
+      body: userId == null
+          ? const Center(child: CircularProgressIndicator()) // Afficher un indicateur de chargement pendant le chargement de userId
+          : tasks.isEmpty
+              ? const Center(child: CircularProgressIndicator())
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: tasks.length,
+                  itemBuilder: (context, index) {
+                    final task = tasks[index];
+                    return Card(
+                      elevation: 3,
+                      margin: const EdgeInsets.symmetric(vertical: 8),
+                      child: ListTile(
+                        title: Text(
+                          task['title'],
+                          style: const TextStyle(fontWeight: FontWeight.bold),
                         ),
-                        Text("Due: ${task['dueDate']}"),
-                      ],
-                    ),
-                    trailing: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: Colors.blue),
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              EditTaskScreen.route,
-                              arguments: task,
-                            ).then((value) {
-                              // Rafraîchir la liste après modification
-                              final userId = ModalRoute.of(context)!
-                                  .settings
-                                  .arguments as String?;
-                              if (userId != null) {
-                                _fetchTasks(userId);
-                              }
-                            });
-                          },
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete, color: Colors.red),
-                          onPressed: () async {
-                            final confirm = await showDialog<bool>(
-                              context: context,
-                              builder: (context) => AlertDialog(
-                                title: const Text("Confirmer"),
-                                content: const Text("Voulez-vous supprimer cette tâche ?"),
-                                actions: [
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, false),
-                                    child: const Text("Annuler"),
-                                  ),
-                                  TextButton(
-                                    onPressed: () => Navigator.pop(context, true),
-                                    child: const Text("Supprimer"),
-                                  ),
-                                ],
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(task['description']),
+                            const SizedBox(height: 4),
+                            Text(
+                              "Status: ${task['status']}",
+                              style: TextStyle(
+                                color: task['status'] == "Done"
+                                    ? Colors.green
+                                    : Colors.red,
                               ),
-                            );
-                            if (confirm == true) {
-                              await _deleteTask(task['id']);
-                            }
-                          },
+                            ),
+                            Text("Due: ${task['dueDate']}"),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                );
-              },
-            ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.edit, color: Colors.blue),
+                              onPressed: () {
+                                Navigator.pushNamed(
+                                  context,
+                                  EditTaskScreen.route,
+                                  arguments: task,
+                                ).then((value) {
+                                  if (userId != null) {
+                                    _fetchTasks(userId!);
+                                  }
+                                });
+                              },
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.delete, color: Colors.red),
+                              onPressed: () async {
+                                final confirm = await showDialog<bool>(
+                                  context: context,
+                                  builder: (context) => AlertDialog(
+                                    title: const Text("Confirmer"),
+                                    content: const Text(
+                                        "Voulez-vous supprimer cette tâche ?"),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, false),
+                                        child: const Text("Annuler"),
+                                      ),
+                                      TextButton(
+                                        onPressed: () =>
+                                            Navigator.pop(context, true),
+                                        child: const Text("Supprimer"),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                                if (confirm == true) {
+                                  await _deleteTask(task['id']);
+                                }
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                ),
       floatingActionButton: FloatingActionButton(
         backgroundColor: Colors.green,
         onPressed: () {
-          Navigator.pushNamed(context, AddTaskScreen.route).then((value) {
-            // Rafraîchir la liste après ajout
-            final userId = ModalRoute.of(context)!.settings.arguments as String?;
-            if (userId != null) {
-              _fetchTasks(userId);
-            }
-          });
+          if (userId != null) {
+            Navigator.pushNamed(
+              context,
+              AddTaskScreen.route,
+              arguments: userId, // Passer userId à AddTaskScreen
+            ).then((value) {
+              if (userId != null) {
+                _fetchTasks(userId!);
+              }
+            });
+          } else {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Erreur : ID utilisateur non trouvé')),
+            );
+          }
         },
         child: const Icon(Icons.add),
       ),

@@ -1,6 +1,9 @@
 // lib/screens/login_screen.dart
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
+import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart'; // Ajoute cette importation
 import 'package:todo_list_app/views/signup/signup_screen.dart';
 import 'package:todo_list_app/views/home_screen.dart';
 
@@ -27,7 +30,7 @@ class LoginScreen extends StatelessWidget {
                 children: [
                   const SizedBox(height: 16),
                   const Text(
-                    "Welcome Back",
+                    "Ravie de vous revoir",
                     style: TextStyle(
                       color: Colors.black,
                       fontSize: 24,
@@ -36,7 +39,7 @@ class LoginScreen extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    "Sign in with your email and password\nor continue with social media",
+                    "Connectez-vous avec votre email et mot de passe\nou continuer avec...",
                     textAlign: TextAlign.center,
                     style: TextStyle(color: Color(0xFF757575)),
                   ),
@@ -94,23 +97,40 @@ class _LoginFormState extends State<LoginForm> {
   String? password;
   bool _isLoading = false;
 
-  // Simuler une requête API pour la connexion
+  // Requête API pour la connexion
   Future<Map<String, dynamic>> _loginUser(String email, String password) async {
-    // TODO: Remplacer par une vraie requête API (POST /login)
-    // Exemple d'URL : Uri.parse('https://api.todoapp.com/login')
-    // Attendu : { "success": true, "userId": "123", "token": "jwt_token" } ou { "success": false, "message": "Erreur" }
-    await Future.delayed(const Duration(seconds: 2)); // Simuler un délai réseau
-    if (email == "test@example.com" && password == "password123") {
+    const String apiUrl = 'http://localhost:5000/api/login'; // URL de l'API
+
+    try {
+      final response = await http.post(
+        Uri.parse(apiUrl),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'email': email,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final data = jsonDecode(response.body);
+        return {
+          'success': true,
+          'userId': data['userId'].toString(), // Convertir en String pour HomeScreen
+          'message': data['message'],
+        };
+      } else {
+        final data = jsonDecode(response.body);
+        return {
+          'success': false,
+          'message': data['error'] ?? 'Erreur lors de la connexion',
+        };
+      }
+    } catch (e) {
       return {
-        "success": true,
-        "userId": "123", // Simuler un ID utilisateur
-        "token": "fake_jwt_token", // Simuler un token
+        'success': false,
+        'message': 'Erreur réseau : $e',
       };
     }
-    return {
-      "success": false,
-      "message": "Email ou mot de passe incorrect",
-    };
   }
 
   void _submit() async {
@@ -124,12 +144,14 @@ class _LoginFormState extends State<LoginForm> {
         _isLoading = false;
       });
       if (response['success'] == true) {
-        // Simuler le stockage du token et de l'ID utilisateur
-        // TODO: Stocker le token et userId dans SharedPreferences ou un gestionnaire d'état (ex. Provider)
+        // Stocker userId dans SharedPreferences
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString('userId', response['userId']);
+
         Navigator.pushReplacementNamed(
           context,
           HomeScreen.route,
-          arguments: response['userId'], // Passer l'ID utilisateur à HomeScreen
+          arguments: response['userId'], // Toujours passer userId pour compatibilité
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -160,7 +182,7 @@ class _LoginFormState extends State<LoginForm> {
               return null;
             },
             decoration: InputDecoration(
-              hintText: "Enter your email",
+              hintText: "Entez votre email",
               labelText: "Email",
               floatingLabelBehavior: FloatingLabelBehavior.always,
               hintStyle: const TextStyle(color: Color(0xFF757575)),
@@ -193,8 +215,8 @@ class _LoginFormState extends State<LoginForm> {
                 return null;
               },
               decoration: InputDecoration(
-                hintText: "Enter your password",
-                labelText: "Password",
+                hintText: "Entez votre mot de passe",
+                labelText: "Mot de passe",
                 floatingLabelBehavior: FloatingLabelBehavior.always,
                 hintStyle: const TextStyle(color: Color(0xFF757575)),
                 contentPadding: const EdgeInsets.symmetric(
@@ -224,7 +246,7 @@ class _LoginFormState extends State<LoginForm> {
                       borderRadius: BorderRadius.all(Radius.circular(16)),
                     ),
                   ),
-                  child: const Text("Login"),
+                  child: const Text("Valider"),
                 ),
         ],
       ),
@@ -232,6 +254,7 @@ class _LoginFormState extends State<LoginForm> {
   }
 }
 
+// Les constantes SVG et autres définitions (mailIcon, lockIcon, etc.) sont inchangées
 const authOutlineInputBorder = OutlineInputBorder(
   borderSide: BorderSide(color: Color(0xFF757575)),
   borderRadius: BorderRadius.all(Radius.circular(100)),
@@ -239,10 +262,10 @@ const authOutlineInputBorder = OutlineInputBorder(
 
 class SocalCard extends StatelessWidget {
   const SocalCard({
-    Key? key,
+    super.key,
     required this.icon,
     required this.press,
-  }) : super(key: key);
+  });
 
   final Widget icon;
   final VoidCallback press;
@@ -266,7 +289,7 @@ class SocalCard extends StatelessWidget {
 }
 
 class NoAccountText extends StatelessWidget {
-  const NoAccountText({Key? key}) : super(key: key);
+  const NoAccountText({super.key});
 
   @override
   Widget build(BuildContext context) {
